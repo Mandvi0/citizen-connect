@@ -11,6 +11,7 @@ import CitizenDashboard from "./pages/citizen/Dashboard";
 import ReportIssue from "./pages/citizen/ReportIssue";
 import AdminLogin from "./pages/admin/Login";
 import AdminDashboard from "./pages/admin/Dashboard";
+import CitizenProfile from "./pages/citizen/Profile";
 
 const queryClient = new QueryClient();
 
@@ -26,6 +27,7 @@ const App = () => (
           <Route path="/citizen/signup" element={<CitizenSignup />} />
           <Route path="/citizen/dashboard" element={<CitizenDashboard />} />
           <Route path="/citizen/report" element={<ReportIssue />} />
+          <Route path="/citizen/profile" element={<CitizenProfile />} />
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
