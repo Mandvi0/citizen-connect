@@ -11,6 +11,7 @@ import CitizenDashboard from "./pages/citizen/Dashboard";
 import ReportIssue from "./pages/citizen/ReportIssue";
 import AdminLogin from "./pages/admin/Login";
 import AdminDashboard from "./pages/admin/Dashboard";
+import CitizenProfile from "./pages/citizen/Profile";
 
 const queryClient = new QueryClient();
 
