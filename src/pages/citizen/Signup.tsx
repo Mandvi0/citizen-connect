@@ -33,15 +33,44 @@ const CitizenSignup = () => {
 
     setLoading(true);
 
-    // Placeholder for authentication logic
-    setTimeout(() => {
-      toast({
-        title: "Account created!",
-        description: "Welcome to the community.",
+
+    try{
+      const res = await fetch ("http://localhost:8000/auth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type" : "application/json",
+        },
+        body: JSON.stringify({
+          name : formData.name,
+          email : formData.email,
+          phone : formData.phone,
+          password: formData.password
+        })
       });
-      navigate("/citizen/dashboard");
+
+      const data = await res.json()
+
+      if(!res.ok){
+        throw new Error(data.detail || "Sign Up Failed");
+      }
+      toast({
+        title: "Account Created!",
+        description: "Successfully Created Account",
+      });
+      
+      navigate("/citizen/login")
+
+
+    }
+    catch(err: any){
+      toast({
+        title: "Login failed",
+        description: err.message,
+        variant: "destructive",
+    });
+    }finally{
       setLoading(false);
-    }, 1000);
+    }
   };
 
   return (

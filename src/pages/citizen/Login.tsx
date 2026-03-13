@@ -15,19 +15,46 @@ const CitizenLogin = () => {
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
+  e.preventDefault();
+  setLoading(true);
 
-    // Placeholder for authentication logic
-    setTimeout(() => {
-      toast({
-        title: "Welcome back!",
-        description: "Successfully logged in.",
-      });
-      navigate("/citizen/dashboard");
-      setLoading(false);
-    }, 1000);
-  };
+  try {
+    const res = await fetch("http://localhost:8000/auth/login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email,
+        password,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.detail || "Login failed");
+    }
+
+    localStorage.setItem("token", data.access_token);
+
+    toast({
+      title: "Welcome back!",
+      description: "Successfully logged in.",
+    });
+
+    navigate("/citizen/dashboard");
+
+  } catch (err: any) {
+    toast({
+      title: "Login failed",
+      description: err.message,
+      variant: "destructive",
+    });
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-secondary to-background flex items-center justify-center p-4">
