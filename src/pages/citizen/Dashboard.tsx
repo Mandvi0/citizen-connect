@@ -261,6 +261,7 @@ const CitizenDashboard = () => {
                 <Card
                   key={complaint.id}
                   className="p-6 hover:shadow-lg transition-all border-2 cursor-pointer"
+                  onClick={() => navigate(`/citizen/complaints/${complaint.id}`)}
                 >
                   <div className="flex items-start gap-4">
                     {/* Image thumbnail or icon */}

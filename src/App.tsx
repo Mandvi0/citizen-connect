@@ -12,6 +12,8 @@ import ReportIssue from "./pages/citizen/ReportIssue";
 import AdminLogin from "./pages/admin/Login";
 import AdminDashboard from "./pages/admin/Dashboard";
 import CitizenProfile from "./pages/citizen/Profile";
+import CitizenComplaintDetail from "./pages/citizen/ComplaintDetail";
+import AdminComplaintDetail from "./pages/admin/ComplaintDetail";
 import ProtectedRoute from "./components/ProtectedRoute";
 import GuestRoute from "./components/GuestRoute";
 
@@ -78,6 +80,14 @@ const App = () => (
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/citizen/complaints/:id"
+            element={
+              <ProtectedRoute>
+                <CitizenComplaintDetail />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Protected admin pages */}
           <Route
@@ -85,6 +95,14 @@ const App = () => (
             element={
               <ProtectedRoute requiredRole="admin">
                 <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/complaints/:id"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <AdminComplaintDetail />
               </ProtectedRoute>
             }
           />

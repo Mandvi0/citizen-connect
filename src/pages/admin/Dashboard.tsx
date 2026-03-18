@@ -389,7 +389,8 @@ const AdminDashboard = () => {
               {complaints.map((complaint) => (
                 <Card
                   key={complaint.id}
-                  className="p-4 border hover:shadow-md transition-all"
+                  className="p-4 border hover:shadow-md transition-all cursor-pointer"
+                  onClick={() => navigate(`/admin/complaints/${complaint.id}`)}
                 >
                   <div className="flex items-start gap-4">
                     {/* Image thumbnail */}
@@ -451,7 +452,7 @@ const AdminDashboard = () => {
                     </div>
 
                     {/* Admin Actions */}
-                    <div className="flex items-center gap-2 flex-shrink-0">
+                    <div className="flex items-center gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                       {complaint.status !== "verified" &&
                         complaint.status !== "resolved" && (
                           <Button
