@@ -43,7 +43,6 @@ const CitizenSignup = () => {
         body: JSON.stringify({
           name : formData.name,
           email : formData.email,
-          phone : formData.phone,
           password: formData.password
         })
       });
@@ -64,7 +63,7 @@ const CitizenSignup = () => {
     }
     catch(err: any){
       toast({
-        title: "Login failed",
+        title: "Signup failed",
         description: err.message,
         variant: "destructive",
     });

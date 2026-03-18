@@ -1,7 +1,9 @@
+import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
 import {
   LayoutDashboard,
   MapPin,
@@ -13,43 +15,147 @@ import {
   CheckCircle2,
   AlertTriangle,
   BarChart3,
+  Loader2,
+  RefreshCw,
+  ImageIcon,
+  Eye,
+  CheckCheck,
 } from "lucide-react";
+import {
+  listAllComplaints,
+  updateComplaintStatus,
+  resolveComplaint,
+  type Complaint,
+  type ComplaintStatus,
+  type Priority,
+} from "@/lib/api";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [complaints, setComplaints] = useState<Complaint[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState<number | null>(null);
+  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [filterPriority, setFilterPriority] = useState<string>("all");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
-  const recentIssues = [
-    {
-      id: 1,
-      title: "Pothole on Main Street",
-      citizen: "John Doe",
-      category: "Road",
-      status: "submitted",
-      priority: "high",
-    },
-    {
-      id: 2,
-      title: "Broken Street Light",
-      citizen: "Jane Smith",
-      category: "Electricity",
-      status: "in-progress",
-      priority: "medium",
-    },
-    {
-      id: 3,
-      title: "Garbage Collection Missed",
-      citizen: "Mike Johnson",
-      category: "Garbage",
-      status: "in-progress",
-      priority: "low",
-    },
-  ];
+  const fetchComplaints = async () => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        navigate("/admin/login");
+        return;
+      }
+
+      const params: {
+        page: number;
+        page_size: number;
+        status?: ComplaintStatus;
+        priority?: Priority;
+      } = {
+        page,
+        page_size: 20,
+      };
+
+      if (filterStatus !== "all")
+        params.status = filterStatus as ComplaintStatus;
+      if (filterPriority !== "all")
+        params.priority = filterPriority as Priority;
+
+      const data = await listAllComplaints(params);
+      setComplaints(data.items);
+      setTotal(data.total);
+      setTotalPages(data.pages);
+    } catch (err: any) {
+      toast({
+        title: "Failed to load complaints",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchComplaints();
+  }, [page, filterStatus, filterPriority]);
+
+  const handleStatusChange = async (
+    complaintId: number,
+    newStatus: ComplaintStatus
+  ) => {
+    setActionLoading(complaintId);
+    try {
+      if (newStatus === "resolved") {
+        await resolveComplaint(complaintId);
+      } else {
+        await updateComplaintStatus(complaintId, { status: newStatus });
+      }
+      toast({
+        title: "Status Updated",
+        description: `Complaint #${complaintId} marked as ${newStatus}.`,
+      });
+      fetchComplaints();
+    } catch (err: any) {
+      toast({
+        title: "Update failed",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handlePriorityChange = async (
+    complaintId: number,
+    newPriority: Priority
+  ) => {
+    setActionLoading(complaintId);
+    try {
+      await updateComplaintStatus(complaintId, { priority: newPriority });
+      toast({
+        title: "Priority Updated",
+        description: `Complaint #${complaintId} priority set to ${newPriority}.`,
+      });
+      fetchComplaints();
+    } catch (err: any) {
+      toast({
+        title: "Update failed",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Computed stats
+  const pendingCount = complaints.filter((c) => c.status === "pending").length;
+  const verifiedCount = complaints.filter(
+    (c) => c.status === "verified"
+  ).length;
+  const resolvedCount = complaints.filter(
+    (c) => c.status === "resolved"
+  ).length;
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "submitted":
+      case "pending":
         return "bg-primary/10 text-primary border-primary/20";
-      case "in-progress":
+      case "verified":
         return "bg-warning/10 text-warning border-warning/20";
       case "resolved":
         return "bg-success/10 text-success border-success/20";
@@ -69,6 +175,21 @@ const AdminDashboard = () => {
       default:
         return "bg-muted text-muted-foreground";
     }
+  };
+
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString("en-IN", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    navigate("/");
   };
 
   return (
@@ -117,7 +238,7 @@ const AdminDashboard = () => {
             <Button
               variant="ghost"
               className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10"
-              onClick={() => navigate("/")}
+              onClick={handleLogout}
             >
               <LogOut className="mr-3 h-5 w-5" />
               Logout
@@ -129,9 +250,25 @@ const AdminDashboard = () => {
       {/* Main Content */}
       <main className="ml-64 p-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2">Dashboard Overview</h1>
-          <p className="text-muted-foreground">Monitor and manage civic issues</p>
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="text-4xl font-bold mb-2">Dashboard Overview</h1>
+            <p className="text-muted-foreground">
+              Monitor and manage civic issues
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            onClick={fetchComplaints}
+            disabled={loading}
+          >
+            {loading ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="mr-2 h-4 w-4" />
+            )}
+            Refresh
+          </Button>
         </div>
 
         {/* Stats Grid */}
@@ -143,31 +280,34 @@ const AdminDashboard = () => {
               </div>
               <TrendingUp className="h-5 w-5 text-success" />
             </div>
-            <p className="text-3xl font-bold mb-1">248</p>
+            <p className="text-3xl font-bold mb-1">{total}</p>
             <p className="text-sm text-muted-foreground">Total Issues</p>
-            <p className="text-xs text-success mt-2">+12% from last month</p>
           </Card>
 
           <Card className="p-6 border-2 hover:shadow-lg transition-all">
             <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 rounded-full bg-warning/10 flex items-center justify-center">
-                <Clock className="h-6 w-6 text-warning" />
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                <Clock className="h-6 w-6 text-primary" />
               </div>
             </div>
-            <p className="text-3xl font-bold mb-1">42</p>
+            <p className="text-3xl font-bold mb-1">{pendingCount}</p>
             <p className="text-sm text-muted-foreground">Pending Review</p>
-            <p className="text-xs text-muted-foreground mt-2">Requires attention</p>
+            <p className="text-xs text-muted-foreground mt-2">
+              Requires attention
+            </p>
           </Card>
 
           <Card className="p-6 border-2 hover:shadow-lg transition-all">
             <div className="flex items-center justify-between mb-4">
               <div className="w-12 h-12 rounded-full bg-warning/10 flex items-center justify-center">
-                <AlertTriangle className="h-6 w-6 text-warning" />
+                <Eye className="h-6 w-6 text-warning" />
               </div>
             </div>
-            <p className="text-3xl font-bold mb-1">68</p>
-            <p className="text-sm text-muted-foreground">In Progress</p>
-            <p className="text-xs text-muted-foreground mt-2">Being resolved</p>
+            <p className="text-3xl font-bold mb-1">{verifiedCount}</p>
+            <p className="text-sm text-muted-foreground">Verified</p>
+            <p className="text-xs text-muted-foreground mt-2">
+              Being resolved
+            </p>
           </Card>
 
           <Card className="p-6 border-2 hover:shadow-lg transition-all">
@@ -177,47 +317,215 @@ const AdminDashboard = () => {
               </div>
               <TrendingUp className="h-5 w-5 text-success" />
             </div>
-            <p className="text-3xl font-bold mb-1">138</p>
+            <p className="text-3xl font-bold mb-1">{resolvedCount}</p>
             <p className="text-sm text-muted-foreground">Resolved</p>
-            <p className="text-xs text-success mt-2">+8% resolution rate</p>
           </Card>
         </div>
 
-        {/* Recent Issues */}
+        {/* Filters */}
+        <div className="flex items-center gap-4 mb-6">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-muted-foreground">
+              Status:
+            </span>
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue placeholder="All" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="verified">Verified</SelectItem>
+                <SelectItem value="resolved">Resolved</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-muted-foreground">
+              Priority:
+            </span>
+            <Select value={filterPriority} onValueChange={setFilterPriority}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue placeholder="All" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="high">High</SelectItem>
+                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="low">Low</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Complaints List */}
         <Card className="p-6 border-2">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold">Recent Issues</h2>
-            <Button variant="outline">View All</Button>
+            <h2 className="text-2xl font-bold">
+              All Complaints{" "}
+              <span className="text-muted-foreground text-lg font-normal">
+                ({total})
+              </span>
+            </h2>
           </div>
 
-          <div className="space-y-4">
-            {recentIssues.map((issue) => (
-              <Card key={issue.id} className="p-4 border hover:shadow-md transition-all">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="font-semibold">{issue.title}</h3>
-                      <Badge className={`${getPriorityColor(issue.priority)} border text-xs`}>
-                        {issue.priority}
-                      </Badge>
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-16 space-y-4">
+              <Loader2 className="h-10 w-10 animate-spin text-primary" />
+              <p className="text-muted-foreground">Loading complaints...</p>
+            </div>
+          ) : complaints.length === 0 ? (
+            <div className="text-center py-12 space-y-3">
+              <CheckCircle2 className="h-12 w-12 text-muted-foreground mx-auto" />
+              <h3 className="text-lg font-semibold">No complaints found</h3>
+              <p className="text-muted-foreground">
+                {filterStatus !== "all" || filterPriority !== "all"
+                  ? "Try adjusting your filters."
+                  : "No complaints have been submitted yet."}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {complaints.map((complaint) => (
+                <Card
+                  key={complaint.id}
+                  className="p-4 border hover:shadow-md transition-all"
+                >
+                  <div className="flex items-start gap-4">
+                    {/* Image thumbnail */}
+                    {complaint.image_url && (
+                      <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-muted">
+                        <img
+                          src={complaint.image_url}
+                          alt={complaint.title}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display =
+                              "none";
+                          }}
+                        />
+                      </div>
+                    )}
+
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="font-semibold">{complaint.title}</h3>
+                        <Badge
+                          className={`${getPriorityColor(
+                            complaint.priority
+                          )} border text-xs`}
+                        >
+                          {complaint.priority}
+                        </Badge>
+                        <Badge
+                          className={`${getStatusColor(
+                            complaint.status
+                          )} border text-xs`}
+                        >
+                          {complaint.status}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
+                        {complaint.description}
+                      </p>
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                        <span>
+                          👤 User #{complaint.user_id}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <MapPin className="h-3 w-3" />
+                          {complaint.latitude.toFixed(4)},{" "}
+                          {complaint.longitude.toFixed(4)}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {formatDate(complaint.created_at)}
+                        </span>
+                        {complaint.image_url && (
+                          <span className="flex items-center gap-1 text-primary">
+                            <ImageIcon className="h-3 w-3" />
+                            Photo
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <span>👤 {issue.citizen}</span>
-                      <span>📍 {issue.category}</span>
+
+                    {/* Admin Actions */}
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {complaint.status !== "verified" &&
+                        complaint.status !== "resolved" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-warning border-warning/30 hover:bg-warning/10"
+                            disabled={actionLoading === complaint.id}
+                            onClick={() =>
+                              handleStatusChange(complaint.id, "verified")
+                            }
+                          >
+                            {actionLoading === complaint.id ? (
+                              <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                            ) : (
+                              <Eye className="h-3 w-3 mr-1" />
+                            )}
+                            Verify
+                          </Button>
+                        )}
+                      {complaint.status !== "resolved" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-success border-success/30 hover:bg-success/10"
+                          disabled={actionLoading === complaint.id}
+                          onClick={() =>
+                            handleStatusChange(complaint.id, "resolved")
+                          }
+                        >
+                          {actionLoading === complaint.id ? (
+                            <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                          ) : (
+                            <CheckCheck className="h-3 w-3 mr-1" />
+                          )}
+                          Resolve
+                        </Button>
+                      )}
+                      {complaint.status === "resolved" && (
+                        <Badge className="bg-success/10 text-success border-success/20 border">
+                          <CheckCircle2 className="h-3 w-3 mr-1" />
+                          Done
+                        </Badge>
+                      )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <Badge className={`${getStatusColor(issue.status)} border`}>
-                      {issue.status}
-                    </Badge>
-                    <Button size="sm" variant="outline">
-                      View Details
-                    </Button>
-                  </div>
-                </div>
-              </Card>
-            ))}
-          </div>
+                </Card>
+              ))}
+            </div>
+          )}
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 mt-6">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+              >
+                Previous
+              </Button>
+              <span className="text-sm text-muted-foreground px-4">
+                Page {page} of {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page >= totalPages}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                Next
+              </Button>
+            </div>
+          )}
         </Card>
       </main>
     </div>

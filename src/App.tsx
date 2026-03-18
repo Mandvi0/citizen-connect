@@ -12,6 +12,8 @@ import ReportIssue from "./pages/citizen/ReportIssue";
 import AdminLogin from "./pages/admin/Login";
 import AdminDashboard from "./pages/admin/Dashboard";
 import CitizenProfile from "./pages/citizen/Profile";
+import ProtectedRoute from "./components/ProtectedRoute";
+import GuestRoute from "./components/GuestRoute";
 
 const queryClient = new QueryClient();
 
@@ -22,15 +24,72 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
+          {/* Public */}
           <Route path="/" element={<Index />} />
-          <Route path="/citizen/login" element={<CitizenLogin />} />
-          <Route path="/citizen/signup" element={<CitizenSignup />} />
-          <Route path="/citizen/dashboard" element={<CitizenDashboard />} />
-          <Route path="/citizen/report" element={<ReportIssue />} />
-          <Route path="/citizen/profile" element={<CitizenProfile />} />
-          <Route path="/admin/login" element={<AdminLogin />} />
-          <Route path="/admin/dashboard" element={<AdminDashboard />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+
+          {/* Auth pages — redirect away if already logged in */}
+          <Route
+            path="/citizen/login"
+            element={
+              <GuestRoute>
+                <CitizenLogin />
+              </GuestRoute>
+            }
+          />
+          <Route
+            path="/citizen/signup"
+            element={
+              <GuestRoute>
+                <CitizenSignup />
+              </GuestRoute>
+            }
+          />
+          <Route
+            path="/admin/login"
+            element={
+              <GuestRoute redirectTo="/admin/dashboard">
+                <AdminLogin />
+              </GuestRoute>
+            }
+          />
+
+          {/* Protected citizen pages */}
+          <Route
+            path="/citizen/dashboard"
+            element={
+              <ProtectedRoute>
+                <CitizenDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/citizen/report"
+            element={
+              <ProtectedRoute>
+                <ReportIssue />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/citizen/profile"
+            element={
+              <ProtectedRoute>
+                <CitizenProfile />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Protected admin pages */}
+          <Route
+            path="/admin/dashboard"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Catch-all */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

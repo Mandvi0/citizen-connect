@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,47 +12,55 @@ import {
   Bell,
   User,
   LogOut,
-  Construction,
-  Zap,
-  Trash2,
   AlertTriangle,
+  FileText,
+  ImageIcon,
+  Loader2,
 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { getMyComplaints, type Complaint } from "@/lib/api";
 
 const CitizenDashboard = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [complaints, setComplaints] = useState<Complaint[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const recentIssues = [
-    {
-      id: 1,
-      title: "Pothole on Main Street",
-      category: "Road",
-      status: "in-progress",
-      date: "2024-01-20",
-      icon: Construction,
-    },
-    {
-      id: 2,
-      title: "Broken Street Light",
-      category: "Electricity",
-      status: "submitted",
-      date: "2024-01-22",
-      icon: Zap,
-    },
-    {
-      id: 3,
-      title: "Garbage Collection Missed",
-      category: "Garbage",
-      status: "resolved",
-      date: "2024-01-15",
-      icon: Trash2,
-    },
-  ];
+  const fetchComplaints = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await getMyComplaints({ page: 1, page_size: 100 });
+      setComplaints(data.items);
+      setTotal(data.total);
+    } catch (err: any) {
+      setError(err.message);
+      toast({
+        title: "Failed to load reports",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchComplaints();
+  }, []);
+
+  // Compute stats from live data
+  const pendingCount = complaints.filter((c) => c.status === "pending").length;
+  const verifiedCount = complaints.filter((c) => c.status === "verified").length;
+  const resolvedCount = complaints.filter((c) => c.status === "resolved").length;
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "submitted":
+      case "pending":
         return "bg-primary/10 text-primary border-primary/20";
-      case "in-progress":
+      case "verified":
         return "bg-warning/10 text-warning border-warning/20";
       case "resolved":
         return "bg-success/10 text-success border-success/20";
@@ -62,15 +71,41 @@ const CitizenDashboard = () => {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case "submitted":
+      case "pending":
         return <Clock className="h-4 w-4" />;
-      case "in-progress":
+      case "verified":
         return <AlertCircle className="h-4 w-4" />;
       case "resolved":
         return <CheckCircle2 className="h-4 w-4" />;
       default:
         return null;
     }
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case "high":
+        return "bg-destructive/10 text-destructive border-destructive/20";
+      case "medium":
+        return "bg-warning/10 text-warning border-warning/20";
+      case "low":
+        return "bg-success/10 text-success border-success/20";
+      default:
+        return "bg-muted text-muted-foreground";
+    }
+  };
+
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString("en-IN", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    navigate("/");
   };
 
   return (
@@ -91,16 +126,18 @@ const CitizenDashboard = () => {
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="icon" className="relative">
               <Bell className="h-5 w-5" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full" />
-            </Button>
-            <Button variant="ghost" size="icon" onClick={()=> navigate("/citizen/profile")}>
-              <User className="h-5 w-5" />
+              {pendingCount > 0 && (
+                <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full" />
+              )}
             </Button>
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => navigate("/")}
+              onClick={() => navigate("/citizen/profile")}
             >
+              <User className="h-5 w-5" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={handleLogout}>
               <LogOut className="h-5 w-5" />
             </Button>
           </div>
@@ -139,7 +176,7 @@ const CitizenDashboard = () => {
                 <AlertTriangle className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <p className="text-2xl font-bold">5</p>
+                <p className="text-2xl font-bold">{total}</p>
                 <p className="text-sm text-muted-foreground">Total Reports</p>
               </div>
             </div>
@@ -147,12 +184,24 @@ const CitizenDashboard = () => {
 
           <Card className="p-6 hover:shadow-lg transition-all border-2">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-warning/10 flex items-center justify-center">
-                <Clock className="h-6 w-6 text-warning" />
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                <Clock className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <p className="text-2xl font-bold">2</p>
-                <p className="text-sm text-muted-foreground">In Progress</p>
+                <p className="text-2xl font-bold">{pendingCount}</p>
+                <p className="text-sm text-muted-foreground">Pending</p>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="p-6 hover:shadow-lg transition-all border-2">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-warning/10 flex items-center justify-center">
+                <AlertCircle className="h-6 w-6 text-warning" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{verifiedCount}</p>
+                <p className="text-sm text-muted-foreground">Verified</p>
               </div>
             </div>
           </Card>
@@ -163,66 +212,127 @@ const CitizenDashboard = () => {
                 <CheckCircle2 className="h-6 w-6 text-success" />
               </div>
               <div>
-                <p className="text-2xl font-bold">3</p>
+                <p className="text-2xl font-bold">{resolvedCount}</p>
                 <p className="text-sm text-muted-foreground">Resolved</p>
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-6 hover:shadow-lg transition-all border-2">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                <MapPin className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">24h</p>
-                <p className="text-sm text-muted-foreground">Avg Response</p>
               </div>
             </div>
           </Card>
         </div>
 
-        {/* Recent Issues */}
+        {/* My Reports */}
         <div>
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold">My Reports</h2>
-            <Button variant="outline" onClick={() => navigate("/citizen/complaints")}>
-              View All
+            <Button variant="outline" onClick={fetchComplaints} disabled={loading}>
+              {loading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
+              Refresh
             </Button>
           </div>
 
-          <div className="space-y-4">
-            {recentIssues.map((issue) => (
-              <Card
-                key={issue.id}
-                className="p-6 hover:shadow-lg transition-all border-2 cursor-pointer"
-              >
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
-                    <issue.icon className="h-6 w-6 text-foreground" />
-                  </div>
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-16 space-y-4">
+              <Loader2 className="h-10 w-10 animate-spin text-primary" />
+              <p className="text-muted-foreground">Loading your reports...</p>
+            </div>
+          ) : error ? (
+            <Card className="p-8 text-center space-y-4">
+              <AlertTriangle className="h-10 w-10 text-destructive mx-auto" />
+              <p className="text-muted-foreground">{error}</p>
+              <Button onClick={fetchComplaints}>Try Again</Button>
+            </Card>
+          ) : complaints.length === 0 ? (
+            <Card className="p-12 text-center space-y-4 border-2 border-dashed">
+              <FileText className="h-12 w-12 text-muted-foreground mx-auto" />
+              <h3 className="text-xl font-semibold">No reports yet</h3>
+              <p className="text-muted-foreground">
+                You haven't submitted any reports. Click "New Report" to get
+                started.
+              </p>
+              <Button onClick={() => navigate("/citizen/report")}>
+                <Plus className="mr-2 h-4 w-4" />
+                Create Your First Report
+              </Button>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {complaints.map((complaint) => (
+                <Card
+                  key={complaint.id}
+                  className="p-6 hover:shadow-lg transition-all border-2 cursor-pointer"
+                >
+                  <div className="flex items-start gap-4">
+                    {/* Image thumbnail or icon */}
+                    <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden">
+                      {complaint.image_url ? (
+                        <img
+                          src={complaint.image_url}
+                          alt={complaint.title}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = "none";
+                            (e.target as HTMLImageElement).parentElement!.innerHTML =
+                              '<svg class="h-6 w-6 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>';
+                          }}
+                        />
+                      ) : (
+                        <FileText className="h-6 w-6 text-muted-foreground" />
+                      )}
+                    </div>
 
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-4 mb-2">
-                      <div>
-                        <h3 className="font-semibold text-lg mb-1">{issue.title}</h3>
-                        <p className="text-sm text-muted-foreground">{issue.category}</p>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-4 mb-2">
+                        <div>
+                          <h3 className="font-semibold text-lg mb-1">
+                            {complaint.title}
+                          </h3>
+                          <p className="text-sm text-muted-foreground line-clamp-1">
+                            {complaint.description}
+                          </p>
+                        </div>
+                        <div className="flex flex-col gap-1 items-end flex-shrink-0">
+                          <Badge
+                            className={`${getStatusColor(
+                              complaint.status
+                            )} border flex items-center gap-1`}
+                          >
+                            {getStatusIcon(complaint.status)}
+                            {complaint.status}
+                          </Badge>
+                          <Badge
+                            className={`${getPriorityColor(
+                              complaint.priority
+                            )} border text-xs`}
+                          >
+                            {complaint.priority}
+                          </Badge>
+                        </div>
                       </div>
-                      <Badge className={`${getStatusColor(issue.status)} border flex items-center gap-1`}>
-                        {getStatusIcon(issue.status)}
-                        {issue.status}
-                      </Badge>
-                    </div>
 
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Clock className="h-4 w-4" />
-                      <span>Reported on {issue.date}</span>
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-3.5 w-3.5" />
+                          {formatDate(complaint.created_at)}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <MapPin className="h-3.5 w-3.5" />
+                          {complaint.latitude.toFixed(4)},{" "}
+                          {complaint.longitude.toFixed(4)}
+                        </span>
+                        {complaint.image_url && (
+                          <span className="flex items-center gap-1 text-primary">
+                            <ImageIcon className="h-3.5 w-3.5" />
+                            Has photo
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              </Card>
-            ))}
-          </div>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

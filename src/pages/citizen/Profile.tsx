@@ -17,54 +17,44 @@ import {
     Globe,
     Pencil,
     AlertCircle,
+    Clock,
+    CheckCircle2,
+    FileText,
+    Loader2,
+    AlertTriangle,
+    ImageIcon,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState } from "react";
-
-
-
-
+import { getMe, getMyComplaints, type UserResponse, type Complaint } from "@/lib/api";
 
 const CitizenProfile = () => {
     const navigate = useNavigate();
     const { toast } = useToast();
-    const [user, setUser] = useState<any>(null);
+    const [user, setUser] = useState<UserResponse | null>(null);
+    const [complaints, setComplaints] = useState<Complaint[]>([]);
+    const [totalComplaints, setTotalComplaints] = useState(0);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    
+
     const fetchProfile = async () => {
         setLoading(true);
         setError(null);
         try {
-            const token = localStorage.getItem("token");
+            const [userData, complaintsData] = await Promise.all([
+                getMe(),
+                getMyComplaints({ page: 1, page_size: 5 }),
+            ]);
 
-            if (!token) {
-                navigate("/citizen/login");
-                return;
-            }
-
-            const res = await fetch("http://localhost:8000/auth/me", {
-                method: "GET",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`
-                },
-            });
-
-            const data = await res.json();
-
-            if (!res.ok) {
-                throw new Error(data.detail || "Profile cannot be fetched");
-            }
-
-            setUser(data);
-
+            setUser(userData);
+            setComplaints(complaintsData.items);
+            setTotalComplaints(complaintsData.total);
         } catch (err: any) {
             setError(err.message || "Failed to load profile");
             toast({
                 title: "Profile cannot be fetched",
                 description: err.message,
-                variant: "destructive"
+                variant: "destructive",
             });
         } finally {
             setLoading(false);
@@ -75,11 +65,16 @@ const CitizenProfile = () => {
         fetchProfile();
     }, []);
 
+    const handleLogout = () => {
+        localStorage.removeItem("token");
+        navigate("/");
+    };
+
     if (loading) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-background via-secondary to-background flex items-center justify-center">
                 <div className="text-center space-y-4">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+                    <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
                     <p className="text-muted-foreground">Loading profile...</p>
                 </div>
             </div>
@@ -103,11 +98,50 @@ const CitizenProfile = () => {
             </div>
         );
     }
+
     const initials = user.name
         ?.split(" ")
         .map((n) => n[0])
         .join("")
         .toUpperCase();
+
+    // Stats from real data
+    const pendingCount = complaints.filter((c) => c.status === "pending").length;
+    const resolvedCount = complaints.filter((c) => c.status === "resolved").length;
+
+    const getStatusColor = (status: string) => {
+        switch (status) {
+            case "pending":
+                return "bg-primary/10 text-primary border-primary/20";
+            case "verified":
+                return "bg-warning/10 text-warning border-warning/20";
+            case "resolved":
+                return "bg-success/10 text-success border-success/20";
+            default:
+                return "bg-muted text-muted-foreground";
+        }
+    };
+
+    const getStatusIcon = (status: string) => {
+        switch (status) {
+            case "pending":
+                return <Clock className="h-3 w-3" />;
+            case "verified":
+                return <AlertCircle className="h-3 w-3" />;
+            case "resolved":
+                return <CheckCircle2 className="h-3 w-3" />;
+            default:
+                return null;
+        }
+    };
+
+    const formatDate = (dateStr: string) => {
+        return new Date(dateStr).toLocaleDateString("en-IN", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+        });
+    };
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-background via-secondary to-background">
@@ -127,12 +161,14 @@ const CitizenProfile = () => {
                     <div className="flex items-center gap-2">
                         <Button variant="ghost" size="icon" className="relative">
                             <Bell className="h-5 w-5" />
-                            <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full" />
+                            {pendingCount > 0 && (
+                                <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full" />
+                            )}
                         </Button>
                         <Button variant="ghost" size="icon" className="text-primary">
                             <User className="h-5 w-5" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
+                        <Button variant="ghost" size="icon" onClick={handleLogout}>
                             <LogOut className="h-5 w-5" />
                         </Button>
                     </div>
@@ -161,10 +197,16 @@ const CitizenProfile = () => {
                         <div className="text-center sm:text-left flex-1">
                             <h2 className="text-2xl font-bold capitalize">{user.name}</h2>
                             <p className="text-muted-foreground">{user.email}</p>
-                            <Badge className="mt-2 capitalize bg-primary/10 text-primary border-primary/20 border">
-                                <Shield className="h-3 w-3 mr-1" />
-                                {user.role}
-                            </Badge>
+                            <div className="flex items-center gap-2 mt-2 justify-center sm:justify-start">
+                                <Badge className="capitalize bg-primary/10 text-primary border-primary/20 border">
+                                    <Shield className="h-3 w-3 mr-1" />
+                                    {user.role}
+                                </Badge>
+                                <Badge variant="outline" className="text-muted-foreground">
+                                    <FileText className="h-3 w-3 mr-1" />
+                                    {totalComplaints} {totalComplaints === 1 ? "Report" : "Reports"}
+                                </Badge>
+                            </div>
                         </div>
                         <Button variant="outline" size="sm" className="gap-2">
                             <Pencil className="h-4 w-4" />
@@ -212,6 +254,83 @@ const CitizenProfile = () => {
                     </div>
                 </Card>
 
+                {/* Recent Reports */}
+                <Card className="p-6 mb-6 border-2">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-semibold flex items-center gap-2">
+                            <AlertTriangle className="h-5 w-5 text-primary" />
+                            Recent Reports
+                        </h3>
+                        {totalComplaints > 5 && (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => navigate("/citizen/dashboard")}
+                            >
+                                View All
+                            </Button>
+                        )}
+                    </div>
+                    <Separator className="mb-4" />
+                    {complaints.length === 0 ? (
+                        <div className="text-center py-6 space-y-2">
+                            <FileText className="h-10 w-10 text-muted-foreground mx-auto" />
+                            <p className="text-muted-foreground text-sm">No reports submitted yet</p>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => navigate("/citizen/report")}
+                            >
+                                Submit Your First Report
+                            </Button>
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            {complaints.map((complaint) => (
+                                <div
+                                    key={complaint.id}
+                                    className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors"
+                                >
+                                    <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden">
+                                        {complaint.image_url ? (
+                                            <img
+                                                src={complaint.image_url}
+                                                alt=""
+                                                className="w-full h-full object-cover"
+                                                onError={(e) => {
+                                                    (e.target as HTMLImageElement).style.display = "none";
+                                                }}
+                                            />
+                                        ) : (
+                                            <FileText className="h-4 w-4 text-muted-foreground" />
+                                        )}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="font-medium text-sm truncate">
+                                            {complaint.title}
+                                        </p>
+                                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                            <Clock className="h-3 w-3" />
+                                            {formatDate(complaint.created_at)}
+                                            {complaint.image_url && (
+                                                <span className="flex items-center gap-0.5 text-primary">
+                                                    <ImageIcon className="h-3 w-3" />
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <Badge
+                                        className={`${getStatusColor(complaint.status)} border text-xs flex items-center gap-1`}
+                                    >
+                                        {getStatusIcon(complaint.status)}
+                                        {complaint.status}
+                                    </Badge>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </Card>
+
                 {/* Settings */}
                 <Card className="p-6 mb-6 border-2">
                     <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
@@ -235,7 +354,7 @@ const CitizenProfile = () => {
                 <Button
                     variant="destructive"
                     className="w-full gap-2"
-                    onClick={() => navigate("/")}
+                    onClick={handleLogout}
                 >
                     <LogOut className="h-4 w-4" />
                     Logout

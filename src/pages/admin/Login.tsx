@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { useNavigate } from "react-router-dom";
 import { Shield, ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { login, getMe } from "@/lib/api";
 
 const AdminLogin = () => {
   const navigate = useNavigate();
@@ -18,14 +19,31 @@ const AdminLogin = () => {
     e.preventDefault();
     setLoading(true);
 
-    setTimeout(() => {
+    try {
+      const data = await login(email, password);
+      localStorage.setItem("token", data.access_token);
+
+      // Verify the user is actually an admin
+      const user = await getMe();
+      if (user.role !== "admin") {
+        localStorage.removeItem("token");
+        throw new Error("Access denied. Admin privileges required.");
+      }
+
       toast({
         title: "Admin Access Granted",
         description: "Welcome to the admin dashboard.",
       });
       navigate("/admin/dashboard");
+    } catch (err: any) {
+      toast({
+        title: "Login failed",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
 
   return (

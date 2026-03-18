@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { useNavigate } from "react-router-dom";
 import { MapPin, ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { login, getMe } from "@/lib/api";
 
 const CitizenLogin = () => {
   const navigate = useNavigate();
@@ -15,46 +16,36 @@ const CitizenLogin = () => {
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setLoading(true);
+    e.preventDefault();
+    setLoading(true);
 
-  try {
-    const res = await fetch("http://localhost:8000/auth/login", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        email,
-        password,
-      }),
-    });
+    try {
+      const data = await login(email, password);
+      localStorage.setItem("token", data.access_token);
 
-    const data = await res.json();
+      // Check role for correct routing
+      const user = await getMe();
+      
+      toast({
+        title: "Welcome back!",
+        description: "Successfully logged in.",
+      });
 
-    if (!res.ok) {
-      throw new Error(data.detail || "Login failed");
+      if (user.role === "admin") {
+        navigate("/admin/dashboard");
+      } else {
+        navigate("/citizen/dashboard");
+      }
+    } catch (err: any) {
+      toast({
+        title: "Login failed",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
-
-    localStorage.setItem("token", data.access_token);
-
-    toast({
-      title: "Welcome back!",
-      description: "Successfully logged in.",
-    });
-
-    navigate("/citizen/dashboard");
-
-  } catch (err: any) {
-    toast({
-      title: "Login failed",
-      description: err.message,
-      variant: "destructive",
-    });
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-secondary to-background flex items-center justify-center p-4">
