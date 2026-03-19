@@ -114,6 +114,37 @@ export async function getMyComplaints(params?: {
 }
 
 /**
+ * Get all complaints for public view (no authentication required).
+ */
+export async function getPublicComplaints(params?: {
+  page?: number;
+  page_size?: number;
+  status?: ComplaintStatus;
+  priority?: Priority;
+}): Promise<ComplaintListResponse> {
+  const searchParams = new URLSearchParams();
+  if (params?.page) searchParams.set("page", String(params.page));
+  if (params?.page_size)
+    searchParams.set("page_size", String(params.page_size));
+  if (params?.status) searchParams.set("status", params.status);
+  if (params?.priority) searchParams.set("priority", params.priority);
+
+  const url = `${API_BASE}/complaints/public?${searchParams.toString()}`;
+  const res = await fetch(url, {
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to fetch public complaints");
+  }
+
+  return res.json();
+}
+
+/**
  * Get a single complaint by ID.
  */
 export async function getComplaint(id: number): Promise<Complaint> {

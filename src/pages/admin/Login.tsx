@@ -29,6 +29,8 @@ const AdminLogin = () => {
         localStorage.removeItem("token");
         throw new Error("Access denied. Admin privileges required.");
       }
+      
+      localStorage.setItem("role", user.role);
 
       toast({
         title: "Admin Access Granted",

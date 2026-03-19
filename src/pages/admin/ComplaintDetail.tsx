@@ -29,6 +29,7 @@ import {
   type ComplaintStatus,
   type Priority,
 } from "@/lib/api";
+import LiveMap from "@/components/LiveMap";
 import {
   Select,
   SelectContent,
@@ -267,9 +268,18 @@ const AdminComplaintDetail = () => {
                 <User className="h-4 w-4" />
                 <span>User ID: #{complaint.user_id}</span>
               </div>
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <MapPin className="h-4 w-4" />
-                <span>{complaint.latitude.toFixed(6)}, {complaint.longitude.toFixed(6)}</span>
+              <div className="col-span-2 mt-2 mb-2">
+                <h4 className="font-semibold mb-2 flex items-center gap-2">
+                  <MapPin className="h-4 w-4" />
+                  Incident Location (<span className="text-xs font-normal text-muted-foreground">{complaint.latitude.toFixed(6)}, {complaint.longitude.toFixed(6)}</span>)
+                </h4>
+                <div className="h-48 w-full rounded-xl overflow-hidden border">
+                  <LiveMap 
+                    complaints={[complaint]} 
+                    center={[complaint.latitude, complaint.longitude]} 
+                    zoom={15} 
+                  />
+                </div>
               </div>
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Calendar className="h-4 w-4" />

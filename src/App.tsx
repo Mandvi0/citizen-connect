@@ -49,7 +49,7 @@ const App = () => (
           <Route
             path="/admin/login"
             element={
-              <GuestRoute redirectTo="/admin/dashboard">
+              <GuestRoute>
                 <AdminLogin />
               </GuestRoute>
             }
@@ -59,7 +59,7 @@ const App = () => (
           <Route
             path="/citizen/dashboard"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute requiredRole="user">
                 <CitizenDashboard />
               </ProtectedRoute>
             }
@@ -67,7 +67,7 @@ const App = () => (
           <Route
             path="/citizen/report"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute requiredRole="user">
                 <ReportIssue />
               </ProtectedRoute>
             }
@@ -75,7 +75,7 @@ const App = () => (
           <Route
             path="/citizen/profile"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute requiredRole="user">
                 <CitizenProfile />
               </ProtectedRoute>
             }
@@ -83,7 +83,7 @@ const App = () => (
           <Route
             path="/citizen/complaints/:id"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute requiredRole="user">
                 <CitizenComplaintDetail />
               </ProtectedRoute>
             }

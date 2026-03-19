@@ -25,6 +25,7 @@ const CitizenLogin = () => {
 
       // Check role for correct routing
       const user = await getMe();
+      localStorage.setItem("role", user.role);
       
       toast({
         title: "Welcome back!",

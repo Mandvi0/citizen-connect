@@ -14,11 +14,24 @@ interface ProtectedRouteProps {
 const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
   const location = useLocation();
   const token = localStorage.getItem("token");
+  const role = localStorage.getItem("role");
 
-  if (!token) {
+  if (!token || !role) {
+    if (!role) localStorage.removeItem("token"); // Cleanup stale, role-less tokens
+
     // Redirect to the appropriate login page, replacing history
     const loginPath = requiredRole === "admin" ? "/admin/login" : "/citizen/login";
     return <Navigate to={loginPath} replace state={{ from: location.pathname }} />;
+  }
+
+  // Check if the user trying to access this route has the required role
+  if (requiredRole && role !== requiredRole) {
+    // E.g. An admin intentionally trying to access the citizen portal.
+    // Log them out of their current role and force them to the requested login page.
+    localStorage.removeItem("token");
+    localStorage.removeItem("role");
+    const targetLoginPath = requiredRole === "admin" ? "/admin/login" : "/citizen/login";
+    return <Navigate to={targetLoginPath} replace />;
   }
 
   return <>{children}</>;

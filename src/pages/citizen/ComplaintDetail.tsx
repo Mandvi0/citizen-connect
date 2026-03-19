@@ -18,6 +18,7 @@ import {
   User,
 } from "lucide-react";
 import { getComplaint, uploadComplaintImage, type Complaint } from "@/lib/api";
+import LiveMap from "@/components/LiveMap";
 
 const CitizenComplaintDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -207,9 +208,18 @@ const CitizenComplaintDetail = () => {
               <p className="text-muted-foreground mb-6">{complaint.description}</p>
 
               <div className="grid grid-cols-2 gap-4 text-sm">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <MapPin className="h-4 w-4" />
-                  <span>Location: {complaint.latitude.toFixed(6)}, {complaint.longitude.toFixed(6)}</span>
+                <div className="col-span-2 mt-4 mb-2">
+                  <h4 className="font-semibold mb-2 flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    Incident Location (<span className="text-xs font-normal text-muted-foreground">{complaint.latitude.toFixed(6)}, {complaint.longitude.toFixed(6)}</span>)
+                  </h4>
+                  <div className="h-48 w-full rounded-xl overflow-hidden border">
+                    <LiveMap 
+                      complaints={[complaint]} 
+                      center={[complaint.latitude, complaint.longitude]} 
+                      zoom={15} 
+                    />
+                  </div>
                 </div>
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <User className="h-4 w-4" />

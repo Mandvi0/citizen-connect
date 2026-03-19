@@ -189,6 +189,7 @@ const AdminDashboard = () => {
 
   const handleLogout = () => {
     localStorage.removeItem("token");
+    localStorage.removeItem("role");
     navigate("/");
   };
 
@@ -197,7 +198,10 @@ const AdminDashboard = () => {
       {/* Sidebar */}
       <aside className="fixed left-0 top-0 h-full w-64 bg-card border-r shadow-lg z-50">
         <div className="p-6">
-          <div className="flex items-center gap-3 mb-8">
+          <div 
+            className="flex items-center gap-3 mb-8 cursor-pointer transition-transform hover:scale-105 active:scale-95"
+            onClick={() => navigate("/")}
+          >
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-destructive to-destructive/80 flex items-center justify-center">
               <LayoutDashboard className="h-5 w-5 text-destructive-foreground" />
             </div>
